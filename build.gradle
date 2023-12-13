@@ -1,0 +1,51 @@
+plugins {
+    id "base"
+    id "maven-publish"
+}
+
+group = "dev.architectury"
+def runNumber = (System.getenv("GITHUB_RUN_NUMBER") == null ? "9999" : System.getenv("GITHUB_RUN_NUMBER"))
+def publishingVersions = project.publishing_versions.split(",")
+
+["neoforge", "forge"].each { loader ->
+    fileTree("mappings/$loader").filter { it.isFile() }.each { file ->
+        def version = file.name.substring(0, file.name.lastIndexOf("."))
+        if (publishingVersions.find { it == version } == null) return
+
+        def task = tasks.register("jar${loader.capitalize()}$version", Zip) {
+            from(file) {
+                into("mappings")
+                rename { "mappings.tiny" }
+            }
+            archiveExtension = "jar"
+            archivesBaseName = "yarn-mappings-patch-$loader"
+            archiveVersion = "$version+build.$runNumber"
+            metadataCharset "UTF-8"
+            destinationDirectory = base.libsDirectory
+        }
+        
+        publishing {
+            publications {
+                create("maven${loader.capitalize()}$version", MavenPublication) {
+                    artifactId = "yarn-mappings-patch-$loader"
+                    it.version = "$version+build.$runNumber"
+                    artifact(task)
+                }
+            }
+        }
+    }
+}
+
+publishing {
+    repositories {
+        if (System.getenv("MAVEN_PASS") != null) {
+            maven {
+                url = "https://deploy.shedaniel.me/"
+                credentials {
+                    username = "shedaniel"
+                    password = System.getenv("MAVEN_PASS")
+                }
+            }
+        }
+    }
+}
