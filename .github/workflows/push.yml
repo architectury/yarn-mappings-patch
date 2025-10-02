@@ -6,6 +6,13 @@ on:
       - '**.gradle'
       - '**.properties'
       - 'mappings/**'
+  workflow_dispatch:
+    inputs:
+      norelease:
+        description: "Don't release the build"
+        required: true
+        default: 'false'
+        type: boolean
 
 jobs:
   build:
